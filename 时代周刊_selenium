@@ -1,0 +1,60 @@
+import time
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+import pymysql
+
+# 获取网页地址
+url = 'https://time.com/'
+path = Service('D:\\Program_tools\\chromedriver-win64\\chromedriver.exe')
+driver = webdriver.Chrome(service=path)
+driver.get(url)
+time.sleep(1)
+
+# 查询条件
+driver.maximize_window()  # 当页面不全时可能会导致找不到元素，全屏后可以找到
+driver.find_element(By.XPATH, '/html/body/main/section[1]/div[3]/div[1]/ul/li[1]/div/a[2]').click()
+# driver.execute_script("(arguments[0]).click()",button)
+# /html/body/main/section[1]/div[3]/div[1]/ul/li[2]/div/a[2]/h3
+
+# 标题与内容
+body = driver.find_element(By.ID, 'article-body-main').text
+title = driver.find_element(By.XPATH, '/html/body/div/div[2]/main/div[1]/header/div[2]/h1').text
+print(title, body)
+
+# 数据库配置
+db_config = {
+    'host': 'localhost',
+    'port': 3306,
+    'user': 'root',
+    'password': '',
+    'autocommit': True,
+    'cursorclass': pymysql.cursors.DictCursor
+}
+
+# 连接到MySQL数据库
+connection = pymysql.connect(**db_config)
+
+try:
+    with connection.cursor() as cursor:
+        # 创建数据库与表
+        cursor.execute("CREATE DATABASE IF NOT EXISTS Selenium_data")
+        connection.select_db("Selenium_data")
+        cursor.execute("CREATE TABLE IF NOT EXISTS Time_data (title VARCHAR(255), content TEXT)")
+
+        # 准备要插入的数据
+        data = [(title, body)]
+
+        # 插入数据
+        for row in data:
+            cursor.execute("INSERT INTO articles (title, content) VALUES (%s, %s)", row)
+
+        # 提交更改
+        connection.commit()
+finally:
+    # 关闭连接
+    connection.close()
+
+
+time.sleep(500000)
+driver.back()
